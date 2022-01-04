@@ -7,8 +7,10 @@ using Unity.MLAgents.Actuators;
 public class RollerAgent : Agent
 {
     Rigidbody rBody;
+    public Vector3 startPlayerPos;
     void Start()
     {
+        startPlayerPos = transform.position;
         rBody = GetComponent<Rigidbody>();
     }
     public Transform target;
@@ -21,10 +23,10 @@ public class RollerAgent : Agent
             this.rBody.velocity = Vector3.zero;
             this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
+        transform.position = startPlayerPos;
         // Move the target to a new spot
-        target.localPosition = new Vector3(Random.value * 8 - 4,
-        0.5f,
-        Random.value * 8 - 4);
+        //target.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+        
     }
     public override void CollectObservations(VectorSensor sensor)
     {
@@ -49,14 +51,42 @@ public class RollerAgent : Agent
         if (distanceToTarget < 1.42f)
         {
             SetReward(1.0f);
+            RecalculatePosition();
             EndEpisode();
         }
         // Fell off platform
         else if (this.transform.localPosition.y < 0)
         {
+            SetReward(-0.5f);
             EndEpisode();
         }
     }
+    void RecalculatePosition()
+    {
+        if (target.localPosition == new Vector3(-10, 0.519999981f, -15)) target.localPosition = new Vector3(11, 0.519999981f, 14);
+        else if (target.localPosition == new Vector3(11, 0.519999981f, 14)) target.localPosition = new Vector3(-10, 0.519999981f, -15);
+        else
+        {
+            target.localPosition = new Vector3(-10, 0.519999981f, -15);
+        }
+    }
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.transform.tag == "wall")
+        {
+            SetReward(-0.25f);
+            EndEpisode();
+        }
+    }
+    private void OnCollisionStay(Collision collision)
+    {
+        if (collision.transform.tag == "wall")
+        {
+            SetReward(-0.25f);
+            EndEpisode();
+        }
+    }
+
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var continuousActionsOut = actionsOut.ContinuousActions;
