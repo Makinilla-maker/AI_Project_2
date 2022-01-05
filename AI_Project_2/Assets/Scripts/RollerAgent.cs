@@ -17,6 +17,7 @@ public class RollerAgent : Agent
     [SerializeField] private float distanceE;
     [SerializeField] private float distanceW;
     public Vector3 startPlayerPos;
+    [SerializeField] private float time = 60;
     void Start()
     {
         startPlayerPos = transform.position;
@@ -32,13 +33,11 @@ public class RollerAgent : Agent
             this.rBody.velocity = Vector3.zero;
             this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
+        time = 60;
         int i = Random.Range(0, 8);
         transform.position = waypointsBall[i].position;
         // Move the target to a new spot
         //target.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
-
-
-
     }
     public override void CollectObservations(VectorSensor sensor)
     {
@@ -58,13 +57,16 @@ public class RollerAgent : Agent
     public float forceMultiplier = 10;
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
+        time -= 1 * Time.deltaTime;
         // Actions, size = 2
         Vector3 controlSignal = Vector3.zero;
         controlSignal.x = actionBuffers.ContinuousActions[0];
         controlSignal.z = actionBuffers.ContinuousActions[1];
         rBody.AddForce(controlSignal * forceMultiplier);
+
         // Rewards
         float distanceToTarget = Vector3.Distance(this.transform.localPosition, target.localPosition);
+
         // Reached target
         if (distanceToTarget < 1.42f)
         {
@@ -72,12 +74,20 @@ public class RollerAgent : Agent
             RecalculatePosition();
             EndEpisode();
         }
+
         // Fell off platform
         else if (this.transform.localPosition.y < 0)
         {
+            //SetReward(-0.1f);
             EndEpisode();
         }
         
+        // Time up
+        if (time <=0)
+        {
+            EndEpisode();
+        }
+
         distanceN = WhereAmI(raycast.forward);
         distanceE = WhereAmI(raycast.right);
         distanceS = WhereAmI(-raycast.forward);
@@ -105,7 +115,7 @@ public class RollerAgent : Agent
     {
         if (collision.transform.tag == "wall")
         {
-            //SetReward(-0.25f);
+            //SetReward(-0.1f);
             EndEpisode();
         }
     }
