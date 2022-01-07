@@ -34,7 +34,7 @@ public class RollerAgent : Agent
             this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
         time = 60;
-        int i = Random.Range(0, 8);
+        int i = Random.Range(0, 2);
         transform.position = waypointsBall[i].position;
         // Move the target to a new spot
         //target.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
@@ -54,10 +54,10 @@ public class RollerAgent : Agent
         sensor.AddObservation(distanceE);
 
     }
-    public float forceMultiplier = 10;
+    public float forceMultiplier = 5;
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
-        time -= 1 * Time.deltaTime;
+        time -= Time.deltaTime;
         // Actions, size = 2
         Vector3 controlSignal = Vector3.zero;
         controlSignal.x = actionBuffers.ContinuousActions[0];
@@ -78,13 +78,14 @@ public class RollerAgent : Agent
         // Fell off platform
         else if (this.transform.localPosition.y < 0)
         {
-            //SetReward(-0.1f);
+            SetReward(-0.2f);
             EndEpisode();
         }
         
         // Time up
         if (time <=0)
         {
+            SetReward(-0.4f);
             EndEpisode();
         }
 
@@ -102,7 +103,7 @@ public class RollerAgent : Agent
         //{
         //    target.localPosition = new Vector3(-7.61999989f, 0.519999981f, -14.1199999f);
         //}
-        int y = Random.Range(0, 8);
+        int y = Random.Range(0, 4);
         target.position = waypointsTarget[y].position;
     }
     public override void Heuristic(in ActionBuffers actionsOut)
