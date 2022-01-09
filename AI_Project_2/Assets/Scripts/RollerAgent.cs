@@ -7,22 +7,21 @@ using Unity.MLAgents.Actuators;
 public class RollerAgent : Agent
 {
     Rigidbody rBody;
-    public Transform raycast;
-    public float raycastDistance;
-    public Transform[] waypointsBall;
-    public Transform[] waypointsTarget;
-    [SerializeField] private float distance;
-    [SerializeField] private float distanceN;
-    [SerializeField] private float distanceS;
-    [SerializeField] private float distanceE;
-    [SerializeField] private float distanceW;
-    public Vector3 startPlayerPos;
-    [SerializeField] private float time = 60;
+    public float time = 60;
+    private float time2;
+    private Vector3 startPosition;
+    public GameObject posRewards;
+    public GameObject negRewards;
+
+    [SerializeField] private bool check;
     void Start()
     {
-        startPlayerPos = transform.position;
+        startPosition = transform.position;
         rBody = GetComponent<Rigidbody>();
+        time2 = time;
+        check = false;
     }
+
     public Transform target;
     public override void OnEpisodeBegin()
     {
@@ -33,31 +32,36 @@ public class RollerAgent : Agent
             this.rBody.velocity = Vector3.zero;
             this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
-        time = 60;
-        int i = Random.Range(0, 2);
-        transform.position = waypointsBall[i].position;
-        // Move the target to a new spot
-        //target.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+        transform.position = startPosition;
+        time = time2;
+        for (int i = 0; i < posRewards.transform.childCount; i++)
+        {
+            posRewards.transform.GetChild(i).gameObject.SetActive(true); 
+        }
+        for (int i = 0; i < negRewards.transform.childCount; i++)
+        {
+            negRewards.transform.GetChild(i).gameObject.SetActive(true);
+        }
     }
+
     public override void CollectObservations(VectorSensor sensor)
     {
         // Target and Agent positions
         sensor.AddObservation(target.localPosition);
         sensor.AddObservation(this.transform.localPosition);
+
         // Agent velocity
         sensor.AddObservation(rBody.velocity.x);
         sensor.AddObservation(rBody.velocity.z);
 
-        sensor.AddObservation(distanceN);
-        sensor.AddObservation(distanceS);
-        sensor.AddObservation(distanceW);
-        sensor.AddObservation(distanceE);
-
+        sensor.AddObservation(check);
+        if (check) check = false;
     }
+
     public float forceMultiplier = 5;
+
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
-        time -= Time.deltaTime;
         // Actions, size = 2
         Vector3 controlSignal = Vector3.zero;
         controlSignal.x = actionBuffers.ContinuousActions[0];
@@ -71,68 +75,52 @@ public class RollerAgent : Agent
         if (distanceToTarget < 1.42f)
         {
             SetReward(1.0f);
-            RecalculatePosition();
             EndEpisode();
         }
 
-        // Fell off platform
-        else if (this.transform.localPosition.y < 0)
+        // Countdown
+        if (time >= 0)
         {
-            SetReward(-0.2f);
+            time -= Time.deltaTime;
+        }
+        else
+        {
             EndEpisode();
         }
-        
-        // Time up
-        if (time <=0)
-        {
-            SetReward(-0.4f);
-            EndEpisode();
-        }
+    }
 
-        distanceN = WhereAmI(raycast.forward);
-        distanceE = WhereAmI(raycast.right);
-        distanceS = WhereAmI(-raycast.forward);
-        distanceW = WhereAmI(-raycast.right);
-    }
-    void RecalculatePosition()
-    {
-        //if (target.position == new Vector3(-7.61999989f, 0.519999981f, -14.1199999f)) target.position = new Vector3(-7.84000015f, 0.519999981f, 13.5100002f);
-        //else if (target.position == new Vector3(-7.84000015f, 0.519999981f, 13.5100002f)) target.position = new Vector3(11.6099997f, 0.519999981f, 0.119999997f);
-        //else if (target.position == new Vector3(11.6099997f, 0.519999981f, 0.119999997f)) target.position = new Vector3(-7.61999989f, 0.519999981f, -14.1199999f);
-        //else
-        //{
-        //    target.localPosition = new Vector3(-7.61999989f, 0.519999981f, -14.1199999f);
-        //}
-        int y = Random.Range(0, 4);
-        target.position = waypointsTarget[y].position;
-    }
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var continuousActionsOut = actionsOut.ContinuousActions;
         continuousActionsOut[0] = Input.GetAxis("Horizontal");
         continuousActionsOut[1] = Input.GetAxis("Vertical");
     }
+
     private void OnCollisionStay(Collision collision)
     {
         if (collision.transform.tag == "wall")
         {
-            //SetReward(-0.1f);
-            EndEpisode();
+            SetReward(-0.1f);
+            check = true;
         }
     }
-    float WhereAmI(Vector3 direction)
+
+    private void OnTriggerEnter(Collider other)
     {
-        RaycastHit hit;
-        if (Physics.Raycast(raycast.position, direction, out hit, raycastDistance))
+        if (other.tag == "neg")
         {
-            Debug.Log(hit.transform.tag);
-            if (hit.transform.tag == "wall")
-            {
-                distance = hit.distance;
-                Debug.DrawLine(raycast.position, direction * hit.distance, Color.blue);
-                return distance;
-            }
+            SetReward(-0.7f);
+            other.gameObject.SetActive(false);
         }
-        return hit.distance;
+        if(other.tag == "pos")
+        {
+            SetReward(0.5f);
+            other.gameObject.SetActive(false);
+        }
+        if (other.tag == "trap")
+        {
+            SetReward(-1.0f);
+            EndEpisode();
+        }
     }
 }

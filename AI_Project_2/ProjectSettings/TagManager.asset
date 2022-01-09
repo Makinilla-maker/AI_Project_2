@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 2
   tags:
   - wall
+  - neg
+  - pos
+  - trap
   layers:
   - Default
   - TransparentFX
