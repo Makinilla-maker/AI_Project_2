@@ -12,11 +12,15 @@ public class RollerAgent : Agent
     private Vector3 startPosition;
     public GameObject posRewards;
     public GameObject negRewards;
+    public Transform[] spawnPoints;
 
     [SerializeField] private bool check;
     void Start()
     {
-        startPosition = transform.position;
+        int random = Random.Range(0,spawnPoints.Length);
+
+
+        startPosition = spawnPoints[random].position;
         rBody = GetComponent<Rigidbody>();
         time2 = time;
         check = false;
@@ -25,6 +29,8 @@ public class RollerAgent : Agent
     public Transform target;
     public override void OnEpisodeBegin()
     {
+        int random = Random.Range(0, spawnPoints.Length);
+
         // If the Agent fell, zero its momentum
         if (this.transform.localPosition.y < 0)
         {
@@ -32,12 +38,16 @@ public class RollerAgent : Agent
             this.rBody.velocity = Vector3.zero;
             this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
-        transform.position = startPosition;
+
+        transform.position = spawnPoints[random].position;
+
         time = time2;
+
         for (int i = 0; i < posRewards.transform.childCount; i++)
         {
             posRewards.transform.GetChild(i).gameObject.SetActive(true); 
         }
+
         for (int i = 0; i < negRewards.transform.childCount; i++)
         {
             negRewards.transform.GetChild(i).gameObject.SetActive(true);
@@ -56,6 +66,7 @@ public class RollerAgent : Agent
 
         sensor.AddObservation(check);
         if (check) check = false;
+
     }
 
     public float forceMultiplier = 5;
@@ -75,6 +86,7 @@ public class RollerAgent : Agent
         if (distanceToTarget < 1.42f)
         {
             SetReward(1.0f);
+            Debug.Log("Prize!");
             EndEpisode();
         }
 
@@ -85,6 +97,7 @@ public class RollerAgent : Agent
         }
         else
         {
+            SetReward(-1.0f);
             EndEpisode();
         }
     }
@@ -101,6 +114,7 @@ public class RollerAgent : Agent
         if (collision.transform.tag == "wall")
         {
             SetReward(-0.1f);
+            Debug.Log("Walls");
             check = true;
         }
     }
@@ -111,15 +125,18 @@ public class RollerAgent : Agent
         {
             SetReward(-0.7f);
             other.gameObject.SetActive(false);
+            Debug.Log("Negative");
         }
         if(other.tag == "pos")
         {
-            SetReward(0.5f);
+            SetReward(0.4f);
             other.gameObject.SetActive(false);
+            Debug.Log("Positive");
         }
         if (other.tag == "trap")
         {
             SetReward(-1.0f);
+            Debug.Log("Traps");
             EndEpisode();
         }
     }
